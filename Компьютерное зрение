@@ -1,2 +1,2 @@
-git rm --cached file1.txt
+git rm --cached Компьютерное зрение.txt
 git commit -m "remove Компьютерное зрение.txt"
