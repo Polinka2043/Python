@@ -1,0 +1,93 @@
+//Для набора базы данных
+import cv2
+import os
+
+path = os.path.dirname(os.path.abspath(__file__))
+detector = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+i=0
+offset=50
+name=input('Введите номер пользователя: ')
+video=cv2.VideoCapture(0)
+while True:
+    ret, im = video.read()
+    gray=cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
+    faces=detector.detectMultiScale(gray, scaleFactor=1.2, minNeighbors=5, minSize=(100, 100))
+    for(x,y,w,h) in faces:
+        i=i+1
+        print("Фото-",i)
+        cv2.imwrite("dataSet/face-"+name +'.'+ str(i) + ".jpg", gray[y-offset:y+h+offset,x-offset:x+w+offset])
+        cv2.rectangle(im,(x-50,y-50),(x+w+50,y+h+50),(225,0,0),2)
+        cv2.imshow('im',im[y-offset:y+h+offset,x-offset:x+w+offset])
+        cv2.waitKey(100)
+    if i>30:
+        video.release()
+        cv2.destroyAllWindows()
+        break
+
+//Код для обучение
+import cv2
+import os
+import numpy as np
+from PIL import Image
+path = os.path.dirname(os.path.abspath(__file__))
+recognizer = cv2.face.LBPHFaceRecognizer.create()
+faceCascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+dataPath = path+r'\dataSet'
+
+def get_images_and_labels(datapath):
+     image_paths = [os.path.join(datapath, f) for f in os.listdir(datapath)]
+     images = []
+     labels = []
+     for image_path in image_paths:
+         image_pil = Image.open(image_path).convert('L')
+         image = np.array(image_pil, 'uint8')
+         nbr = int(os.path.split(image_path)[1].split(".")[0].replace("face-", ""))
+         faces = faceCascade.detectMultiScale(image)
+         for (x, y, w, h) in faces:
+             images.append(image[y: y + h, x: x + w])
+             labels.append(nbr)
+             cv2.imshow("Adding faces to traning set...", image[y: y + h, x: x + w])
+             cv2.waitKey(100)
+     return images, labels
+
+images, labels = get_images_and_labels(dataPath)
+recognizer.train(images, np.array(labels))
+recognizer.save(path+r'\trainer\trainer.yml')
+cv2.destroyAllWindows()
+
+
+//Для запуска распознования
+import cv2
+import os
+
+path = os.path.dirname(os.path.abspath(__file__))
+recognizer = cv2.face.LBPHFaceRecognizer.create()
+recognizer.read(path+r'\trainer\trainer.yml')
+faceCascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+cam = cv2.VideoCapture(0)
+font = cv2.FONT_HERSHEY_SIMPLEX
+
+while True:
+    ret, im =cam.read()
+    gray=cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
+    faces=faceCascade.detectMultiScale(gray, scaleFactor=1.2, minNeighbors=5, minSize=(100, 100), flags=cv2.CASCADE_SCALE_IMAGE)
+    for(x,y,w,h) in faces:
+        nbr_predicted,coord = recognizer.predict(gray[y:y+h,x:x+w])
+        cv2.rectangle(im,(x-50,y-50),(x+w+50,y+h+50),(225,0,0),2)
+        print(nbr_predicted)
+        if(nbr_predicted == 2):
+             nbr_predicted='Polina Vepreva'
+        if(nbr_predicted == 3):
+            nbr_predicted = 'Лицо нераспознано'
+        if (nbr_predicted == 6):
+            nbr_predicted = 'Pavel Veprev'
+        if (nbr_predicted == 7):
+            nbr_predicted = 'Nadejda Vepreva'
+        if (nbr_predicted == 8):
+            nbr_predicted = 'Tima Veprev'
+        if (nbr_predicted == 9):
+            nbr_predicted = 'Tima'
+        cv2.putText(im,str(nbr_predicted), (x,y+h),font, 1.1, (0,255,0))
+        cv2.imshow('Face recognition',im)
+        cv2.waitKey(10)
+
